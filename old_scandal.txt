@@ -1,0 +1,322 @@
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <algorithm>
+using namespace std;
+
+int n, m;
+list<int> *g;
+int *vis;
+int *added;
+// list<int> found;
+list<int> needs;
+int time_ref;
+int *in_stack;
+int num;
+
+int *parents, *found, *low_link;
+list<int> stack;
+int **graph;
+
+bool ok;
+
+// int dfs(int source, int now) {
+//     int old = vis[source];
+//     vis[source] = now;
+
+//     if (source > n && added[source - n]) {
+//         vis[source] = old;
+//         return -1;
+//     }
+
+//     if (source > n && (vis[source - n] == now)) {
+//         vis[source] = old;
+//         return -1;
+//     } else if (source <= n && (vis[source + n] == now)) {
+//         vis[source] = old;
+//         return -1;
+//     }
+
+//     if(g[source].size() == 0 ) {
+//         if (source <= n) {
+//             added[source] = 1;
+//         }
+//         return 1;
+//     }
+
+//     int res = 1;
+//     for (int neigh : g[source]) {
+//         if (vis[neigh] == now) {
+//             continue;
+//         }
+
+//         res = dfs(neigh, now);
+
+//         if (res == 1) {
+//             if (source <= n) {
+//                 added[source] = 1;
+//             }
+//             return 1;
+//         } 
+//     }
+
+//     vis[source] = old;
+//     return -1;
+// }
+
+// void DFS(int source, int f[], int l[],list<int> s,int i_s[], int p[]) {
+    void DFS(int source) {
+    time_ref++;
+    found[source] = time_ref;
+    low_link[source] = found[source];
+    stack.push_front(source);
+    in_stack[source] = 1;
+
+    // cout << source << '\n';
+
+    for (int neigh : g[source]) {
+        if (parents[neigh] != -1) {
+            if (in_stack[neigh] == 1) {
+                low_link[source] = min(low_link[source], found[neigh]);
+            }
+            continue;
+        }
+        parents[neigh] = source;
+        // DFS(neigh, f, l, s, i_s, p);
+        DFS(neigh);
+
+        low_link[source] = min(low_link[source], low_link[neigh]);
+
+
+        // if (f[neigh] == -1) {
+        //     parents[neigh] = source;
+        //     DFS(neigh ,f,l,s, i_s);
+        //     l[source] = min(l[source], l[neigh]);
+        // } else if (i_s[neigh]) {
+        //     l[source] = min(l[source], f[neigh]);
+        // }
+    }
+
+    if (low_link[source] == found[source]) {
+        list<int> scc;
+        bool good = true;
+        int x;
+        do {
+            x = stack.front();
+            stack.pop_front();
+            in_stack[x] = 0;
+            scc.push_front(x);
+            cout << x << ' ';
+
+            if (x <= n)  {
+                if (added[x+n] || (find(scc.begin(), scc.end(), x) != scc.end()) ) good = false;
+            } else if (added[x-n] || (find(scc.begin(), scc.end(), x) != scc.end()) ) good = false;
+        } while (x != source);
+        cout << '\n';
+
+        if(good) {
+            for(int crt : scc) {
+                if (crt <= n && !added[crt]) num++;
+                added[crt] = 1;
+            }
+        }
+        scc.clear();
+    }
+}
+
+void trajan() {
+    for (int i = 1; i <= 2 * n; i++) {
+        in_stack[i] = 0;
+        added[i] = 0;
+        parents[i] = -1;
+        found[i] = 2147483647;
+        low_link[i] = 2147483647;
+    }
+
+    time_ref = 0;
+    for (int node = 1; node <= 2*n; node ++) {
+        if (parents[node] == -1) {
+            parents[node] = node;
+
+            // DFS(node, found, low_link, stack, in_stack, parents);
+            DFS(node);
+        }
+    }
+}
+
+void another(int node) {
+    found[node] = 1;
+    stack.push_front(node);
+    in_stack[node] = 1;
+
+    for (int neigh : g[node]) {
+        if (neigh <= n && (added[neigh + n] || in_stack[neigh + n])) {
+            // continue;
+            ok = false;
+            break;
+        }
+
+        else if (neigh > n && (added[neigh - n] || in_stack[neigh - n])) {
+            // continue;
+            ok = false;
+            break;
+        }
+
+        another(neigh);
+    } 
+}
+
+void aux() {
+    for (int i = 1; i <= 2*n; i++) {
+        found[i] = 0;
+        in_stack[i] = 0;
+        added[i] = 0;
+    }
+
+    for (int i = 1; i <= 2; i++) {
+        if (found[i] == 0) {
+            ok= true;
+            another(i);
+
+            if (!ok) {
+                stack.clear();
+                continue;
+            }
+
+            int node;
+            while (!stack.empty()) {
+                node = stack.front();
+                stack.pop_front();
+                if (ok)
+                if (added[node] == 0 && node <= n) num++;
+                added[node] = 1; 
+                in_stack[node] = 0;
+            }
+        }
+    }
+
+}
+
+int main() {
+    ifstream INPUT("scandal.in");
+    ofstream OUTPUT("scandal.out");
+
+    INPUT >> n >> m;
+    int x, y, c;
+    g = new list<int>[2 * n + 1];
+
+    // for (int i = 1; i <= 2 *n; i++) {
+    //     for (int j = 1; j <= 2*n; j++) {
+    //         if (i - j != n && j - i != n && i != j) {
+    //             g[i].push_back(j);
+    //             g[j].push_back(i);
+    //         }
+    //     }
+    // }
+
+    for (int i = 0; i < m; i++) {
+        INPUT >> x >> y >> c;
+
+        if (c == 0) {
+            g[x + n].push_back(y);
+            g[y + n].push_back(x);
+            // g[x+n].remove(y+n);
+            // g[y+n].remove(x+n);
+
+        } else if (c == 1) {
+            g[x + n].push_back(y + n);
+            // g[x+n].remove(y);
+        
+        } else if (c == 2) {
+            g[y + n].push_back(x + n);
+            // g[y+n].remove(x);
+
+        } else if (c == 3) {
+            g[x].push_back(y + n);
+            g[y].push_back(x + n);
+            // g[x].remove(y);
+            // g[y].remove(x);
+
+        }
+    }
+
+    // vis = new int[2 * n + 2];
+    // for (int i = 1; i <= 2*n; i++) vis[i] = 0;
+
+    // added = new int[n + 1];
+    // for (int i = 1; i <= n; i++) added[i] = 0;
+
+    // int crt;
+    // int i = 1;
+    // while(!needs.empty()) {
+    //     crt = needs.front();
+    //     needs.pop_front();
+
+    //     if (!added[crt] && dfs(crt, i) == -1) {
+    //         crt = needs.front();
+    //         needs.pop_front();
+    //         i++;
+    //         if (!added[crt]) dfs(crt, i);
+
+    //     } else {
+    //         needs.pop_front();
+    //     }
+    //     i++;
+    // }
+
+    // OUTPUT << found.size() << "\n";
+    // for (int i = 1; i <= n; i++) {
+    //     if (added[i]) 
+    //         OUTPUT << i << "\n";
+    // }
+
+    // graph = new int*[2 * n + 2];
+    // for (int i = 0; i <= 2*n; i++) {
+    //     graph[i] = new int[2 * n + 2];
+    //     for (int j = 0; j <= 2 * n; j++) {
+    //             if (i - j == n || j - i == n) {
+    //                 graph[i][j] = 0;
+    //             }
+    //            graph[i][j] = 1;
+    //     }
+    // }
+
+    // for (int i = 0; i < m; i++) {
+    //     INPUT >> x >> y >> c;
+
+    //     if (c == 0) {
+    //         graph[x + n][y + n] = 0;
+
+    //     } else if (c == 1) {
+    //         graph[x + n][y] = 0;
+        
+    //     } else if (c == 2) {
+    //         graph[x][y + n] = 0;
+    //     } else {
+    //         graph[x][y] = 0;
+    //     }
+    // }
+
+    parents = new int[2 * n + 1];
+    found = new int[2 * n + 1];
+    low_link = new int[2 * n + 1];
+    in_stack = new int[2 * n + 1];
+    added = new int[2 * n + 1];
+
+    // for (int i = 1 ; i <= 2 * n; i++) {
+    //     i
+    //     }
+
+    // trajan();
+    aux();
+
+    OUTPUT << num << '\n';
+    for (int i = 1; i <= n; i++) {
+        if (added[i]) OUTPUT << i << '\n';
+    }
+
+
+    INPUT.close();
+    OUTPUT.close();
+    return 0;
+}
